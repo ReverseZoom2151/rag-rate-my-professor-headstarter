@@ -1,0 +1,124 @@
+{
+    "reviews": [
+      {
+        "professor": "Dr. Emily Chen",
+        "subject": "Physics",
+        "stars": 4,
+        "review": "Dr. Chen explains complex concepts clearly. Her enthusiasm for physics is contagious."
+      },
+      {
+        "professor": "Prof. Michael Johnson",
+        "subject": "History",
+        "stars": 3,
+        "review": "Lectures are informative but can be dry. More interactive sessions would be beneficial."
+      },
+      {
+        "professor": "Dr. Sarah Williams",
+        "subject": "Biology",
+        "stars": 5,
+        "review": "Exceptional teacher! Dr. Williams makes biology fascinating and is always willing to help."
+      },
+      {
+        "professor": "Prof. David Lee",
+        "subject": "Mathematics",
+        "stars": 2,
+        "review": "Struggles to explain difficult concepts. Often seems unprepared for lectures."
+      },
+      {
+        "professor": "Dr. Amanda Rodriguez",
+        "subject": "Psychology",
+        "stars": 4,
+        "review": "Engaging lecturer with practical examples. Sometimes assigns too much reading."
+      },
+      {
+        "professor": "Prof. Robert Taylor",
+        "subject": "English Literature",
+        "stars": 5,
+        "review": "Passionate about literature. Discussions in class are thought-provoking and enriching."
+      },
+      {
+        "professor": "Dr. Lisa Brown",
+        "subject": "Chemistry",
+        "stars": 3,
+        "review": "Knowledgeable but can be intimidating. Lab sessions are well-organized."
+      },
+      {
+        "professor": "Prof. James Wilson",
+        "subject": "Economics",
+        "stars": 4,
+        "review": "Clear explanations of economic theories. Could use more real-world applications."
+      },
+      {
+        "professor": "Dr. Maria Garcia",
+        "subject": "Computer Science",
+        "stars": 5,
+        "review": "Excellent teacher who makes programming accessible. Always available for extra help."
+      },
+      {
+        "professor": "Prof. Thomas Anderson",
+        "subject": "Philosophy",
+        "stars": 2,
+        "review": "Tends to ramble and go off-topic. Grading seems arbitrary at times."
+      },
+      {
+        "professor": "Dr. Karen White",
+        "subject": "Sociology",
+        "stars": 4,
+        "review": "Engaging discussions on social issues. Heavy workload but very rewarding."
+      },
+      {
+        "professor": "Prof. Daniel Kim",
+        "subject": "Art History",
+        "stars": 3,
+        "review": "Knowledgeable about art but lectures can be monotonous. Good use of visual aids."
+      },
+      {
+        "professor": "Dr. Jennifer Moore",
+        "subject": "Environmental Science",
+        "stars": 5,
+        "review": "Passionate about sustainability. Field trips greatly enhance the learning experience."
+      },
+      {
+        "professor": "Prof. Christopher Davis",
+        "subject": "Political Science",
+        "stars": 4,
+        "review": "Balanced presentation of political ideologies. Encourages critical thinking."
+      },
+      {
+        "professor": "Dr. Rachel Green",
+        "subject": "Linguistics",
+        "stars": 3,
+        "review": "Interesting subject matter but can be confusing. Office hours are helpful."
+      },
+      {
+        "professor": "Prof. Kevin Martinez",
+        "subject": "Business Administration",
+        "stars": 4,
+        "review": "Brings real-world experience to the classroom. Group projects are challenging but valuable."
+      },
+      {
+        "professor": "Dr. Laura Thompson",
+        "subject": "Anthropology",
+        "stars": 5,
+        "review": "Fascinating lectures on human cultures. Dr. Thompson is approachable and supportive."
+      },
+      {
+        "professor": "Prof. Steven Wright",
+        "subject": "Music Theory",
+        "stars": 2,
+        "review": "Seems disinterested in teaching. Assignments are unclear and feedback is minimal."
+      },
+      {
+        "professor": "Dr. Olivia Parker",
+        "subject": "Neuroscience",
+        "stars": 4,
+        "review": "Complex material explained well. More hands-on activities would be appreciated."
+      },
+      {
+        "professor": "Prof. George Turner",
+        "subject": "Geology",
+        "stars": 3,
+        "review": "Knowledgeable about the subject but not the most engaging speaker. Field trips are informative."
+      }
+    ]
+  }
