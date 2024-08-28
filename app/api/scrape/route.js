@@ -1,69 +1,122 @@
-import { NextResponse } from 'next/server'
-import axios from 'axios'
-import * as cheerio from 'cheerio'
-import { Pinecone } from '@pinecone-database/pinecone'
-import OpenAI from 'openai'
+import { NextResponse } from 'next/server';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { Pinecone } from '@pinecone-database/pinecone';
+import OpenAI from 'openai';
 
-export async function POST(req) {
-  const { link } = await req.json()
+async function extractProfessorDetails(text) {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  const prompt = `
+    Extract all relevant information about the professor from the text in JSON format. Include any details that might be useful for students to know, such as their name, subject, department, education, research interests, awards, and any notable achievements or experiences.
+
+    Text:
+    ${text}
+  `;
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const aiContent = response.choices[0].message.content;
+  console.log("AI Response:", aiContent);
+  let extractedInfo;
 
   try {
-    const response = await axios.get(link)
-    const $ = cheerio.load(response.data)
+    extractedInfo = JSON.parse(aiContent);
+  } catch (error) {
+    console.error('Failed to parse AI response as JSON:', aiContent);
+    try {
+      extractedInfo = JSON.parse(aiContent.replace(/```json\n(.*)\n```/, '$1'));
+    } catch (error) {
+      console.error('Failed to parse AI response as JSON with regex:', aiContent);
+      try {
+        extractedInfo = JSON.parse(aiContent.replace(/```\n(.*)\n```/, '$1'));
+      } catch (error) {
+        console.error('Failed to parse AI response as JSON with regex without json label:', aiContent);
+        throw new Error('Invalid JSON format in AI response');
+      }
+    }
+  }
 
-    const professorName = $('.NameTitle__Name-dowf0z-2.cJdVEK').text().trim()
-    const subject = $('.CardSchool__Department-sc-19lmz2k-4.kqnHjq').text().trim()
-    const reviews = []
+  const embeddingResponse = await openai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: text,
+    encoding_format: 'float',
+  });
 
-    $('.RatingValues__RatingValue-sc-6dc747-2.kMhQjf').each((index, element) => {
-      const review = $(element).text().trim()
-      reviews.push(review)
-    })
+  const embedding = embeddingResponse.data[0].embedding;
 
-    const pc = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY,
-    })
-    const index = pc.index('scrape').namespace('ns1')
-    const openai = new OpenAI()
+  return {
+    extractedInfo,
+    embedding,
+  };
+}
 
-    const processedData = []
+export async function POST(req) {
+  const { link, links } = await req.json();
+  let allLinks = [];
 
-    for (const review of reviews) {
-      const embeddingResponse = await openai.embeddings.create({
-        model: 'text-embedding-3-small',
-        input: review,
-        encoding_format: 'float',
-      })
+  if (link) {
+    allLinks.push(link);
+  }
 
-      const embedding = embeddingResponse.data[0].embedding
+  if (links && Array.isArray(links)) {
+    allLinks = allLinks.concat(links);
+  }
+
+  const pc = new Pinecone({
+    apiKey: process.env.PINECONE_API_KEY,
+  });
+
+  const index = pc.index('scrape').namespace('ns1');
+  const openai = new OpenAI();
+  const processedData = [];
+
+  try {
+    for (const link of allLinks) {
+      console.log(`Processing link: ${link}`);
+
+      const response = await axios.get(link);
+      const $ = cheerio.load(response.data);
+      const pageTextContent = $('body').text();
+      const { extractedInfo, embedding } = await extractProfessorDetails(pageTextContent);
 
       processedData.push({
         values: embedding,
-        id: professorName,
-        metadata: {
-          review,
-          subject,
-        },
-      })
+        id: extractedInfo.professorName,
+        metadata: extractedInfo,
+      });
     }
 
-    const upsertResponse = await index.upsert({
-      vectors: processedData,
-      namespace: 'ns1',
-    })
-
-    return NextResponse.json({
-      success: true,
-      message: 'Data scraped and inserted into Pinecone',
-      upsertedCount: upsertResponse.upserted_count,
-    })
+    if (processedData.length > 0) {
+      const upsertResponse = await index.upsert({
+        vectors: processedData,
+        namespace: 'ns1',
+      });
+      return NextResponse.json({
+        success: true,
+        message: 'Data scraped and inserted into Pinecone',
+        upsertedCount: upsertResponse.upserted_count,
+      });
+    } else {
+      return NextResponse.json({
+        success: true,
+        message: 'No data to insert into Pinecone',
+        upsertedCount: 0,
+      });
+    }
   } catch (error) {
-    console.error(error)
+    console.error(error);
     return NextResponse.json({
       success: false,
       message: 'Failed to scrape the data',
       error: error.message,
-    })
+    });
   }
 }
+
 

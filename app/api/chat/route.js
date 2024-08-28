@@ -35,11 +35,6 @@ export async function POST(req) {
     topK: 5,
     includeMetadata: true,
     vector: embedding.data[0].embedding,
-    filter: {
-      id: {
-        $eq: link ? new URL(link).pathname.split('/').pop() : undefined,
-      },
-    },
   })
 
   let resultString = ''
@@ -54,14 +49,14 @@ export async function POST(req) {
     \n\n`
   })
 
-  resultString += 'Results from Scrape index:\n'
+  resultString += 'Results from Scrape index:\n';
   scrapeResults.matches.forEach((match) => {
-    resultString += `
-    Professor: ${match.id}
-    Review: ${match.metadata.review}
-    Subject: ${match.metadata.subject}
-    \n\n`
-  })
+    resultString += `Professor: ${match.id}\n`;
+    Object.entries(match.metadata).forEach(([key, value]) => {
+      resultString += `${key}: ${value}\n`;
+    });
+    resultString += '\n\n';
+  });
 
   const lastMessage = messages[messages.length - 1]
   const lastMessageContent = lastMessage.content + resultString
@@ -73,7 +68,7 @@ export async function POST(req) {
       ...lastDataWithoutLastMessage,
       { role: 'user', content: lastMessageContent },
     ],
-    model: 'gpt-4',
+    model: 'gpt-4o',
     stream: true,
   })
 
