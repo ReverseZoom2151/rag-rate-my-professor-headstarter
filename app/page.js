@@ -10,43 +10,72 @@ export default function Home() {
     },
   ])
   const [message, setMessage] = useState('')
+  const [link, setLink] = useState('') 
+
+  const scrapeLink = async () => {
+    try {
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ link }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to scrape the link')
+      }
+
+      const data = await response.json()
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   const sendMessage = async () => {
-    setMessage('')
+    setMessage('');
     setMessages((messages) => [
       ...messages,
-      {role: 'user', content: message},
-      {role: 'assistant', content: ''},
-    ])
-
-    const response = fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([...messages, {role: 'user', content: message}]),
-    }).then(async (res) => {
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let result = ''
-
-      return reader.read().then(function processText({done, value}) {
-        if (done) {
-          return result
-        }
-        const text = decoder.decode(value || new Uint8Array(), {stream: true})
+      { role: 'user', content: message },
+      { role: 'assistant', content: '' },
+    ]);
+  
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, { role: 'user', content: message }],
+          link,
+        }),
+      });
+  
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let result = '';
+  
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+  
+        const text = decoder.decode(value || new Uint8Array(), {
+          stream: true,
+        });
         setMessages((messages) => {
-          let lastMessage = messages[messages.length - 1]
-          let otherMessages = messages.slice(0, messages.length - 1)
+          let lastMessage = messages[messages.length - 1];
+          let otherMessages = messages.slice(0, messages.length - 1);
           return [
             ...otherMessages,
-            {...lastMessage, content: lastMessage.content + text},
-          ]
-        })
-        return reader.read().then(processText)
-      })
-    })
-  }
+            { ...lastMessage, content: lastMessage.content + text },
+          ];
+        });
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
 
   return (
     <Box
@@ -66,6 +95,17 @@ export default function Home() {
         p={2}
         spacing={3}
       >
+        <Stack direction={'row'} spacing={2}>
+          <TextField
+            label="Rate My Professor Link"
+            fullWidth
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+          />
+          <Button variant="contained" onClick={scrapeLink}>
+            Scrape Link
+          </Button>
+        </Stack>
         <Stack
           direction={'column'}
           spacing={2}

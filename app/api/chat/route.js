@@ -9,31 +9,44 @@ Use them to answer the question if needed.
 `
 
 export async function POST(req) {
-  const data = await req.json()
+  const { messages, link } = await req.json()
 
   const pc = new Pinecone({
     apiKey: process.env.PINECONE_API_KEY,
   })
-  const index = pc.index('rag').namespace('ns1')
+  const ragIndex = pc.index('rag').namespace('ns1')
+  const scrapeIndex = pc.index('scrape').namespace('ns1')
   const openai = new OpenAI()
 
-  const text = data[data.length - 1].content
+  const text = messages[messages.length - 1].content
   const embedding = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: text,
     encoding_format: 'float',
   })
 
-  const results = await index.query({
+  const ragResults = await ragIndex.query({
     topK: 5,
     includeMetadata: true,
     vector: embedding.data[0].embedding,
   })
 
+  const scrapeResults = await scrapeIndex.query({
+    topK: 5,
+    includeMetadata: true,
+    vector: embedding.data[0].embedding,
+    filter: {
+      id: {
+        $eq: link ? new URL(link).pathname.split('/').pop() : undefined,
+      },
+    },
+  })
+
   let resultString = ''
-  results.matches.forEach((match) => {
+
+  resultString += 'Results from RAG index:\n'
+  ragResults.matches.forEach((match) => {
     resultString += `
-    Returned Results:
     Professor: ${match.id}
     Review: ${match.metadata.review}
     Subject: ${match.metadata.subject}
@@ -41,17 +54,26 @@ export async function POST(req) {
     \n\n`
   })
 
-  const lastMessage = data[data.length - 1]
+  resultString += 'Results from Scrape index:\n'
+  scrapeResults.matches.forEach((match) => {
+    resultString += `
+    Professor: ${match.id}
+    Review: ${match.metadata.review}
+    Subject: ${match.metadata.subject}
+    \n\n`
+  })
+
+  const lastMessage = messages[messages.length - 1]
   const lastMessageContent = lastMessage.content + resultString
-  const lastDataWithoutLastMessage = data.slice(0, data.length - 1)
+  const lastDataWithoutLastMessage = messages.slice(0, messages.length - 1)
 
   const completion = await openai.chat.completions.create({
     messages: [
-      {role: 'system', content: systemPrompt},
+      { role: 'system', content: systemPrompt },
       ...lastDataWithoutLastMessage,
-      {role: 'user', content: lastMessageContent},
+      { role: 'user', content: lastMessageContent },
     ],
-    model: 'gpt-4o',
+    model: 'gpt-4',
     stream: true,
   })
 
@@ -76,3 +98,4 @@ export async function POST(req) {
 
   return new NextResponse(stream)
 }
+
