@@ -10,70 +10,61 @@ async function extractProfessorDetails(text) {
   });
 
   const prompt = `
-    Extract all relevant information about the professor from the text in JSON format. Include any details that might be useful for students to know, such as their name, subject, department, education, research interests, awards, and any notable achievements or experiences.
+    Extract all relevant information about the professor from the text in JSON format. Include any details that might be useful for students to know, such as their name (professorName), subject, department, education, research interests, awards, and any notable achievements or experiences.
 
-    Text:
-    ${text}
+    {Text:
+    ${text}}
   `;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const aiContent = response.choices[0].message.content;
-  console.log("AI Response:", aiContent);
-  let extractedInfo;
+  let extractedInfo = {};  
 
   try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const aiContent = response.choices[0].message.content;
+    console.log("AI Response:", aiContent);
+
     extractedInfo = JSON.parse(aiContent);
+
   } catch (error) {
-    console.error('Failed to parse AI response as JSON:', aiContent);
-    try {
-      extractedInfo = JSON.parse(aiContent.replace(/```json\n(.*)\n```/, '$1'));
-    } catch (error) {
-      console.error('Failed to parse AI response as JSON with regex:', aiContent);
-      try {
-        extractedInfo = JSON.parse(aiContent.replace(/```\n(.*)\n```/, '$1'));
-      } catch (error) {
-        console.error('Failed to parse AI response as JSON with regex without json label:', aiContent);
-        throw new Error('Invalid JSON format in AI response');
-      }
-    }
+    console.error('Failed to parse AI response as JSON:', error.message);
+    console.log('AI Response:', aiContent);
+    extractedInfo = {};  
   }
 
-  const embeddingResponse = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: text,
-    encoding_format: 'float',
-  });
+  try {
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text,
+      encoding_format: 'float',
+    });
 
-  const embedding = embeddingResponse.data[0].embedding;
+    const embedding = embeddingResponse.data[0].embedding;
 
-  return {
-    extractedInfo,
-    embedding,
-  };
+    return {
+      extractedInfo,
+      embedding,
+    };
+  } catch (error) {
+    console.error('Failed to create embedding:', error.message);
+    return {
+      extractedInfo, 
+      embedding: null,
+    };
+  }
 }
+
 
 export async function POST(req) {
   const { link, links } = await req.json();
-  let allLinks = [];
+  let allLinks = link ? [link] : [];
+  allLinks = links && Array.isArray(links) ? allLinks.concat(links) : allLinks;
 
-  if (link) {
-    allLinks.push(link);
-  }
-
-  if (links && Array.isArray(links)) {
-    allLinks = allLinks.concat(links);
-  }
-
-  const pc = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY,
-  });
-
+  const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
   const index = pc.index('scrape').namespace('ns1');
-  const openai = new OpenAI();
   const processedData = [];
 
   try {
@@ -85,18 +76,19 @@ export async function POST(req) {
       const pageTextContent = $('body').text();
       const { extractedInfo, embedding } = await extractProfessorDetails(pageTextContent);
 
-      processedData.push({
-        values: embedding,
-        id: extractedInfo.professorName,
-        metadata: extractedInfo,
-      });
+      if (extractedInfo && extractedInfo.professorName) {
+        processedData.push({
+          values: embedding,
+          id: extractedInfo.professorName,
+          metadata: extractedInfo,
+        });
+      } else {
+        console.warn('Professor name or extracted information is missing for link:', link);
+      }
     }
 
     if (processedData.length > 0) {
-      const upsertResponse = await index.upsert({
-        vectors: processedData,
-        namespace: 'ns1',
-      });
+      const upsertResponse = await index.upsert({ vectors: processedData, namespace: 'ns1' });
       return NextResponse.json({
         success: true,
         message: 'Data scraped and inserted into Pinecone',
@@ -110,7 +102,7 @@ export async function POST(req) {
       });
     }
   } catch (error) {
-    console.error(error);
+    console.error('Error during scraping:', error.message);
     return NextResponse.json({
       success: false,
       message: 'Failed to scrape the data',
@@ -118,5 +110,7 @@ export async function POST(req) {
     });
   }
 }
+
+
 
 
